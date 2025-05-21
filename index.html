@@ -24,6 +24,7 @@
       text-align: center;
       max-width: 600px;
       width: 90%;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
     }
     input, button, select {
       padding: 0.5rem;
@@ -31,6 +32,12 @@
       margin: 0.5rem;
       border-radius: 0.5rem;
       border: none;
+    }
+    button {
+      background-color: #ff8ae2;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
     }
     .question {
       font-size: 1.5rem;
@@ -42,6 +49,34 @@
     .leaderboard {
       text-align: left;
       margin-top: 1rem;
+      background-color: #ffffff20;
+      padding: 1rem;
+      border-radius: 1rem;
+      box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    .leaderboard h3 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .leaderboard ol {
+      padding-left: 1.2rem;
+    }
+    .leaderboard li {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.5rem;
+    }
+    .leaderboard li:nth-child(1)::before {
+      content: "🥇 ";
+    }
+    .leaderboard li:nth-child(2)::before {
+      content: "🥈 ";
+    }
+    .leaderboard li:nth-child(3)::before {
+      content: "🥉 ";
     }
     #sticker {
       font-size: 2rem;
@@ -66,6 +101,7 @@
         <option value="pro">Pro (10s)</option>
       </select>
       <button onclick="startGame()">Start Game</button>
+      <button onclick="showLeaderboard()">View Leaderboard</button>
     </div>
     <div id="quiz" style="display:none">
       <div class="info">
@@ -74,7 +110,7 @@
       </div>
       <div id="sticker"></div>
       <div class="question" id="question"></div>
-      <input type="text" id="answerInput" placeholder="Your answer" />
+      <input type="text" id="answerInput" placeholder="Your answer" onkeydown="if(event.key==='Enter'){submitAnswer()}" />
       <button onclick="submitAnswer()">Submit</button>
       <div class="result" id="result"></div>
     </div>
@@ -86,117 +122,124 @@
     </div>
   </div>
   <script>
-    const tables = Array.from({ length: 13 }, (_, i) => i + 1).flatMap(n => Array.from({ length: 10 }, (_, j) => `${n} x ${j + 1}`));
-    const squares = Array.from({ length: 50 }, (_, i) => `${i + 1}²`);
-    const cubes = Array.from({ length: 30 }, (_, i) => `${i + 1}³`);
-    const questions = [...tables.map(q => ({ q, a: eval(q.replace('x', '*')) })),
-                      ...squares.map(q => ({ q, a: (parseInt(q) ** 2) })),
-                      ...cubes.map(q => ({ q, a: (parseInt(q) ** 3) }))];
+    const questions = [];
+    const correctAnswers = [];
+    const incorrectAnswers = [];
 
-    const stickers = ['🎉', '👏', '😎', '🔥', '👍', '🌟', '💯', '😁'];
-    let username, mode, timer, timeLeft;
-    let score = 0, hearts = 5, currentIndex = 0, correctCount = 0, incorrectCount = 0;
-    let history = [];
-    let shuffledQuestions = [];
+    const tableRanges = [
+      { start: 1, end: 13 },
+      { start: 17, end: 17 },
+      { start: 23, end: 23 },
+      { start: 29, end: 29 }
+    ];
 
-    const playerNameEl = document.getElementById('playerName');
-    const scoreEl = document.getElementById('score');
-    const heartsEl = document.getElementById('hearts');
-    const timerEl = document.getElementById('timer');
-    const questionEl = document.getElementById('question');
-    const answerInput = document.getElementById('answerInput');
-    const resultEl = document.getElementById('result');
-    const summaryEl = document.getElementById('summary');
-    const leaderboardEl = document.getElementById('leaderboard');
-    const stickerEl = document.getElementById('sticker');
-    const correctSound = document.getElementById('correctSound');
-    const wrongSound = document.getElementById('wrongSound');
-
-    answerInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') submitAnswer();
+    tableRanges.forEach(range => {
+      for (let i = range.start; i <= range.end; i++) {
+        for (let j = 1; j <= 13; j++) {
+          questions.push({ q: `${i} x ${j}`, a: (i * j).toString() });
+        }
+      }
     });
+
+    for (let i = 1; i <= 50; i++) {
+      questions.push({ q: `${i}²`, a: (i * i).toString() });
+    }
+    for (let i = 1; i <= 30; i++) {
+      questions.push({ q: `${i}³`, a: (i * i * i).toString() });
+    }
+
+    let timer, timeLeft, score = 0, hearts = 5, questionCount = 0;
+    let currentQuestion;
+    let username = '';
+    let mode = 'noob';
 
     function startGame() {
       username = document.getElementById('username').value.trim();
+      if (!username) return alert("Please enter your name");
       mode = document.getElementById('mode').value;
-      if (!username) return alert('Please enter your name.');
       document.getElementById('setup').style.display = 'none';
       document.getElementById('quiz').style.display = 'block';
-      playerNameEl.textContent = username;
-      shuffledQuestions = [...questions].sort(() => Math.random() - 0.5).slice(0, 100);
-      nextQuestion();
+      document.getElementById('playerName').textContent = username;
+      score = 0; hearts = 5; questionCount = 0;
+      correctAnswers.length = 0;
+      incorrectAnswers.length = 0;
+      showQuestion();
     }
 
-    function nextQuestion() {
-      if (currentIndex >= shuffledQuestions.length || hearts <= 0) return endGame();
-      resultEl.textContent = '';
-      stickerEl.textContent = '';
-      answerInput.value = '';
-      const current = shuffledQuestions[currentIndex];
-      questionEl.textContent = `Q${currentIndex + 1}: ${current.q}`;
+    function showQuestion() {
+      if (questionCount >= 100 || hearts <= 0) return endGame();
+      questionCount++;
+      currentQuestion = questions[Math.floor(Math.random() * questions.length)];
+      document.getElementById('question').textContent = `Q${questionCount}: ${currentQuestion.q}`;
+      document.getElementById('answerInput').value = '';
+      document.getElementById('result').textContent = '';
       timeLeft = mode === 'pro' ? 10 : 15;
-      timerEl.textContent = `${timeLeft}s`;
+      document.getElementById('timer').textContent = timeLeft;
       clearInterval(timer);
       timer = setInterval(() => {
         timeLeft--;
-        timerEl.textContent = `${timeLeft}s`;
+        document.getElementById('timer').textContent = timeLeft;
         if (timeLeft <= 0) {
           clearInterval(timer);
-          handleAnswer(null);
+          handleAnswer('');
         }
       }, 1000);
     }
 
     function submitAnswer() {
-      const answer = answerInput.value.trim();
-      if (answer === '') return;
-      handleAnswer(parseInt(answer));
+      const answer = document.getElementById('answerInput').value.trim();
+      if (!answer) return;
+      clearInterval(timer);
+      handleAnswer(answer);
     }
 
-    function handleAnswer(ans) {
-      clearInterval(timer);
-      const current = shuffledQuestions[currentIndex];
-      const isCorrect = ans === current.a;
-      history.push({ question: current.q, yourAnswer: ans, correctAnswer: current.a, correct: isCorrect });
-      if (isCorrect) {
+    function handleAnswer(answer) {
+      const resultEl = document.getElementById('result');
+      const sticker = document.getElementById('sticker');
+      if (answer === currentQuestion.a) {
         score++;
-        correctCount++;
-        resultEl.textContent = '✅ Correct!';
-        correctSound.play();
-        stickerEl.textContent = stickers[Math.floor(Math.random() * stickers.length)];
+        correctAnswers.push(currentQuestion);
+        document.getElementById('correctSound').play();
+        resultEl.textContent = `✅ Correct! The answer was ${currentQuestion.a}`;
+        sticker.textContent = '🎉';
       } else {
         hearts--;
-        incorrectCount++;
-        resultEl.textContent = `❌ Incorrect! Correct Answer: ${current.a}`;
-        wrongSound.play();
+        incorrectAnswers.push({ ...currentQuestion, yourAnswer: answer });
+        document.getElementById('wrongSound').play();
+        resultEl.textContent = `❌ Incorrect! The answer was ${currentQuestion.a}`;
+        sticker.textContent = '😢';
       }
-      scoreEl.textContent = score;
-      heartsEl.textContent = hearts;
-      currentIndex++;
-      setTimeout(nextQuestion, 1000);
+      document.getElementById('score').textContent = score;
+      document.getElementById('hearts').textContent = hearts;
+      setTimeout(showQuestion, 2000);
     }
 
     function endGame() {
       document.getElementById('quiz').style.display = 'none';
       document.getElementById('gameOver').style.display = 'block';
-      summaryEl.innerHTML = `
-        <p><strong>Final Score:</strong> ${score}</p>
-        <p><strong>Correct Answers:</strong> ${correctCount}</p>
-        <p><strong>Incorrect Answers:</strong> ${incorrectCount}</p>
-        <p><strong>Answer History:</strong></p>
-        <ul>${history.map(h => `<li>${h.question} = ${h.correctAnswer}, You: ${h.yourAnswer ?? '⏱️'} (${h.correct ? '✅' : '❌'})</li>`).join('')}</ul>
-      `;
+      const summary = document.getElementById('summary');
+      summary.innerHTML = `<p>Score: ${score}</p>
+                           <p>Correct Answers: ${correctAnswers.length}</p>
+                           <p>Incorrect Answers: ${incorrectAnswers.length}</p>
+                           <h4>Incorrect Questions:</h4>
+                           <ul>${incorrectAnswers.map(q => `<li>${q.q} → You: ${q.yourAnswer}, Correct: ${q.a}</li>`).join('')}</ul>`;
       updateLeaderboard();
     }
 
     function updateLeaderboard() {
-      const localKey = `quiz_scores_${username}`;
-      const scores = JSON.parse(localStorage.getItem(localKey)) || [];
-      scores.push({ score, date: new Date().toLocaleString() });
-      scores.sort((a, b) => b.score - a.score);
-      localStorage.setItem(localKey, JSON.stringify(scores.slice(0, 5)));
-      leaderboardEl.innerHTML = `<h3>🏆 Local Leaderboard (${username})</h3>
-        <ol>${scores.slice(0, 5).map(s => `<li>${s.score} pts on ${s.date}</li>`).join('')}</ol>`;
+      const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+      leaderboard.push({ name: username, score });
+      leaderboard.sort((a, b) => b.score - a.score);
+      const top5 = leaderboard.slice(0, 5);
+      localStorage.setItem('leaderboard', JSON.stringify(top5));
+      const lbHtml = `<h3>🏆 Leaderboard</h3><ol>${top5.map(entry => `<li>${entry.name}: ${entry.score}</li>`).join('')}</ol>`;
+      document.getElementById('leaderboard').innerHTML = lbHtml;
+    }
+
+    function showLeaderboard() {
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('gameOver').style.display = 'block';
+      updateLeaderboard();
     }
   </script>
 </body>
