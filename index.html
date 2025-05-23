@@ -98,7 +98,7 @@
       <input type="text" id="username" placeholder="Enter your name" required />
       <select id="mode">
         <option value="noob">Noob (15s)</option>
-        <option value="pro">Pro (10s)</option>
+        <option value="pro">Pro (12s)</option>
       </select>
       <button onclick="startGame()">Start Game</button>
       <button onclick="showLeaderboard()">View Leaderboard</button>
@@ -172,7 +172,7 @@
       document.getElementById('question').textContent = `Q${questionCount}: ${currentQuestion.q}`;
       document.getElementById('answerInput').value = '';
       document.getElementById('result').textContent = '';
-      timeLeft = mode === 'pro' ? 10 : 15;
+      timeLeft = mode === 'pro' ? 12 : 15;
       document.getElementById('timer').textContent = timeLeft;
       clearInterval(timer);
       timer = setInterval(() => {
