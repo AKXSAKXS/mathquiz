@@ -231,11 +231,11 @@
 
     function updateLeaderboard() {
       const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
-      leaderboard.push({ name: username, score });
+      leaderboard.push({ name: username, score, mode });
       leaderboard.sort((a, b) => b.score - a.score);
       const top5 = leaderboard.slice(0, 5);
       localStorage.setItem('leaderboard', JSON.stringify(top5));
-      const lbHtml = `<h3>🏆 Leaderboard</h3><ol>${top5.map(entry => `<li>${entry.name}: ${entry.score}</li>`).join('')}</ol>`;
+     const lbHtml = `<h3>🏆 Leaderboard</h3><ol>${top5.map(entry => `<li>${entry.name} (${entry.mode}): ${entry.score}</li>`).join('')}</ol>`;
       document.getElementById('leaderboard').innerHTML = lbHtml;
     }
 
