@@ -231,6 +231,12 @@
 
     function updateLeaderboard() {
       const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+      if(mode=="pro"){
+        mode= "pro";
+      }
+      else{
+        mode="noob";
+      }
       leaderboard.push({ name: username, score, mode });
       leaderboard.sort((a, b) => b.score - a.score);
       const top5 = leaderboard.slice(0, 5);
