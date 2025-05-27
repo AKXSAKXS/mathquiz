@@ -129,7 +129,9 @@
     const tableRanges = [
       { start: 1, end: 13 },
       { start: 17, end: 17 },
-      { start: 19, end: 19 }
+      { start: 19, end: 19 },
+      { start: 23, end: 23 },
+      { start: 29, end: 29 }
     ];
 
     tableRanges.forEach(range => {
@@ -142,9 +144,11 @@
 
     for (let i = 1; i <= 50; i++) {
       questions.push({ q: `${i}²`, a: (i * i).toString() });
+      questions.push({ q: `${i * i} is the square of`, a: `${i}` });
     }
     for (let i = 1; i <= 30; i++) {
       questions.push({ q: `${i}³`, a: (i * i * i).toString() });
+            questions.push({ q: `${i*i*i} is the cube of`, a: `${i}` });
     }
 
     let timer, timeLeft, score = 0, hearts = 5, questionCount = 0;
