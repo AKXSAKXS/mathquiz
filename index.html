@@ -170,7 +170,7 @@
     }
 
     function showQuestion() {
-      if (questionCount >= 100 || hearts <= 0) return endGame();
+      if (questionCount >= 101 || hearts <= 0) return endGame();
       questionCount++;
       currentQuestion = questions[Math.floor(Math.random() * questions.length)];
       document.getElementById('question').textContent = `Q${questionCount}: ${currentQuestion.q}`;
